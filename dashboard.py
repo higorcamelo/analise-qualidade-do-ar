@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
-import matplotlib.pyplot as plt
+import plotly.express as px
 import folium
 
 def main():
@@ -14,26 +14,21 @@ def main():
     gdf.crs = "EPSG:4326"
 
     gdf = gdf.to_crs(epsg=4326)
-    mapa_mundi = mapa_mundi.to_crs(epsg=4326)
-
-    # Criar uma máscara booleana para os pontos que intersectam com o mapa_mundi
-    mask = gdf.geometry.intersects(mapa_mundi.unary_union)
-
-    # Aplicar a máscara ao GeoDataFrame
-    gdf = gdf[mask]
-
-    # Agregação na geometria por país
-    gdf_aggregated = gdf.dissolve(by='Country Label', aggfunc='mean').reset_index()
+    mapa_mundi = mapa_mundi.to_crs(epsg=4326) #TODO: FAZER MAPA COM OS PAÍSES
 
     st.title('Dashboard de dados da qualidade do ar')
 
-    # Criar gráfico de pizza com os principais poluentes
-    poluentes_frequentes = gdf['Pollutant'].value_counts()
-    fig, ax = plt.subplots()
-    ax.pie(poluentes_frequentes, labels=poluentes_frequentes.index, autopct='%1.1f%%', startangle=90)
-    ax.axis('equal')  # Assegura que o gráfico seja desenhado como um círculo.
+    # Calcular a frequência de cada poluente
+    poluentes_frequentes = gdf['Pollutant'].value_counts(normalize=True)
 
-    st.pyplot(fig)
+    # Agrupar poluentes com menos de 5% em um grupo chamado "Outros"
+    threshold = 0.05
+    poluentes_agrupados = poluentes_frequentes.copy()
+    poluentes_agrupados[poluentes_agrupados < threshold] = 'Outros'
+
+    # Criar o gráfico de pizza com Plotly Express
+    fig = px.pie(names=poluentes_agrupados.index, values=poluentes_agrupados.values, title='Principais Poluentes')
+    st.plotly_chart(fig)
     
 if __name__ == '__main__':
     main()
