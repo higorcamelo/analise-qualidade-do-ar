@@ -1,10 +1,12 @@
 import streamlit as st
+import pandas as pd
 import geopandas as gpd
+import matplotlib.pyplot as plt
 import folium
 
 def main():
     """
-    Este script lê um arquivo geojson contendo dados de qualidade do ar e os exibe em um mapa do Folium.
+    Este script lê um arquivo geojson contendo dados de qualidade do ar e cria um dashboard com eles.
     """
     gdf = gpd.read_file('data/processado/geo_data.geojson')
     mapa_mundi = gpd.read_file('data/processado/mapa_mundi.shp')
@@ -20,21 +22,18 @@ def main():
     # Aplicar a máscara ao GeoDataFrame
     gdf = gdf[mask]
 
-    # Agregação na geometria
-    gdf_aggregated = gdf.dissolve(by='geometry', aggfunc='mean').reset_index()
+    # Agregação na geometria por país
+    gdf_aggregated = gdf.dissolve(by='Country Label', aggfunc='mean').reset_index()
 
     st.title('Dashboard de dados da qualidade do ar')
 
-    # Criar um mapa Folium centrado em uma localização média
-    m = folium.Map(location=[gdf_aggregated['Latitude'].mean(), gdf_aggregated['Longitude'].mean()], zoom_start=5)
+    # Criar gráfico de pizza com os principais poluentes
+    poluentes_frequentes = gdf['Pollutant'].value_counts()
+    fig, ax = plt.subplots()
+    ax.pie(poluentes_frequentes, labels=poluentes_frequentes.index, autopct='%1.1f%%', startangle=90)
+    ax.axis('equal')  # Assegura que o gráfico seja desenhado como um círculo.
 
-    # Adicionar marcadores ao mapa para cada país no GeoDataFrame agregado
-    for idx, row in gdf_aggregated.iterrows():
-        # Use as informações relevantes ao nível do país
-        country_info = f"País: {row['Country']} - Média de Poluição: {row['Value'].mean():.2f} µg/m³"
-        folium.Marker([row['Latitude'], row['Longitude']], popup=country_info).add_to(m)
-        # Exibir o mapa no Streamlit
-        folium_static(m)
-
+    st.pyplot(fig)
+    
 if __name__ == '__main__':
     main()
